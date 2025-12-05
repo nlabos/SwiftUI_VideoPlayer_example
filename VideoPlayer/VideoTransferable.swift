@@ -9,26 +9,41 @@ import CoreTransferable
 import Foundation
 import UniformTypeIdentifiers
 
-// Custom transferable type for video
+/// PhotosPicker と AVPlayer 間での動画ファイル転送を管理するカスタム型
+/// CoreTransferable プロトコルに準拠し、写真ライブラリからの動画選択とアプリ内使用を可能にする
+/// ファイルベースの転送方式を採用し、一時ファイルでの効率的な動画処理を実現
 struct VideoTransferable: Transferable {
+    /// 転送された動画ファイルのローカルURL
+    /// アプリの一時ディレクトリ内に配置され、AVPlayerでの再生に使用される
     let url: URL
-
+    
+    /// Transferable プロトコルの転送表現定義
+    /// エクスポートとインポートの両方向転送をサポートし、.movieタイプのファイルを処理
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(contentType: .movie) { video in
-            // エクスポート時の処理
+            // エクスポート処理：アプリ内の動画を外部に送信する際の処理
+            // 現在の実装では、既存のファイルURLをそのまま送信用ファイルとして返却
             SentTransferredFile(video.url)
         } importing: { received in
-            // インポート時の処理
+            // インポート処理：PhotosPickerから選択された動画ファイルを受信・処理
+            
+            // 元ファイル名を保持してアクセス性を向上
             let fileName = received.file.lastPathComponent
+            
+            // アプリ専用の一時ディレクトリにファイルをコピー
+            // この方式により、サンドボックス制限を回避し安定したアクセスを確保
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-
-            // 既存ファイルがある場合は削除
+            
+            // 既存の同名ファイルを削除（重複回避とストレージ効率化）
             if FileManager.default.fileExists(atPath: tempURL.path) {
                 try FileManager.default.removeItem(at: tempURL)
             }
-
-            // ファイルを一時ディレクトリにコピー
+            
+            // 受信ファイルを一時ディレクトリにコピー
+            // この操作により、元のPhotosライブラリファイルに依存しない独立したコピーを作成
             try FileManager.default.copyItem(at: received.file, to: tempURL)
+            
+            // 新しいVideoTransferableインスタンスを作成して返却
             return VideoTransferable(url: tempURL)
         }
     }

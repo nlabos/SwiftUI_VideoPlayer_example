@@ -203,13 +203,19 @@ struct ContentView: View {
         }
     }
     
+    /// 動画メタデータの作成または更新を行う
+    /// 新規動画の場合はAVAssetから動画情報を取得してメタデータを作成
+    /// 既存動画の場合は最終再生日時のみ更新
+    /// - Parameters:
+    ///   - item: PhotosPickerアイテム
+    ///   - url: 動画ファイルのローカルURL
     private func createOrUpdateVideoMetadata(from item: PhotosPickerItem, url: URL) async {
-        // PhotosPickerから識別子を取得（簡易実装）
+        // PhotosPickerから識別子を取得（ファイル名ベースの簡易実装）
         let identifier = url.lastPathComponent
         
         // 既存のメタデータを検索
         if let existing = videoMetadata.first(where: { $0.assetIdentifier == identifier }) {
-            existing.lastPlayedAt = Date()
+            existing.lastPlayedAt = Date()  // 最終再生日時を現在時刻で更新
             currentVideoMetadata = existing
         } else {
             // 新しいメタデータを作成
@@ -219,7 +225,7 @@ struct ContentView: View {
             
             let metadata = VideoMetadata(
                 assetIdentifier: identifier,
-                title: url.deletingPathExtension().lastPathComponent,
+                title: url.deletingPathExtension().lastPathComponent,  // ファイル名から拡張子を除いたものをタイトルに設定
                 duration: durationSeconds
             )
             metadata.lastPlayedAt = Date()
@@ -231,11 +237,17 @@ struct ContentView: View {
         try? modelContext.save()
     }
     
+    /// 動画のお気に入り状態を切り替える
+    /// UIのハートボタンタップ時に呼び出される
+    /// - Parameter metadata: 対象の動画メタデータ
     private func toggleFavorite(_ metadata: VideoMetadata) {
         metadata.isFavorite.toggle()
         try? modelContext.save()
     }
     
+    /// 現在の再生位置をデータベースに保存
+    /// タイマーまたは一時停止時に定期的に呼び出される
+    /// 続きから再生機能の基盤となる重要な処理
     private func updatePlaybackPosition() {
         guard let player = player,
               let metadata = currentVideoMetadata
@@ -243,8 +255,8 @@ struct ContentView: View {
         
         let currentTime = player.currentTime().seconds
         if !currentTime.isNaN && currentTime > 0 {
-            metadata.playbackPosition = currentTime
-            metadata.lastPlayedAt = Date()
+            metadata.playbackPosition = currentTime    // 現在の再生位置を保存
+            metadata.lastPlayedAt = Date()             // 最終再生日時も更新
             try? modelContext.save()
         }
     }
