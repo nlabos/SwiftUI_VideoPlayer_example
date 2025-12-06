@@ -89,21 +89,42 @@ class VideoMetadata {
     }
 }
 
+/// プレイリストを管理するSwiftDataモデル
+/// 複数の動画をグループ化し、ユーザー定義のコレクションとして管理
+/// 動画との多対多リレーションシップを提供し、効率的な検索・ソート機能を実装
+/// CloudKit同期対応設計により、複数デバイス間でのプレイリスト共有を想定
 @Model
 class Playlist {
+    /// ユーザーが設定するプレイリストの表示名
+    /// 作成時に必須入力、後から編集可能な識別用ラベル
     var name: String
+    
+    /// プレイリスト作成日時（自動設定）
+    /// ソート機能や履歴管理で利用される不変の基準時刻
     var createdAt: Date
+    
+    /// 最終更新日時（自動更新）
+    /// 動画の追加・削除・順序変更時に自動で現在時刻に更新
     var updatedAt: Date
+    
+    /// プレイリスト内の動画数（キャッシュ）
+    /// パフォーマンス最適化のため配列のcountを別途保持
+    /// addVideo/removeVideoメソッドで自動同期される
     var videoCount: Int
     
+    /// 動画メタデータとの多対多リレーションシップ
+    /// 削除時はnullifyルールで、動画データは保持しつつ関連のみ除去
     @Relationship(deleteRule: .nullify)
     var videoMetadata: [VideoMetadata] = []
     
+    /// Playlistの初期化処理
+    /// 作成時刻と更新時刻を現在時刻で設定し、動画数を0で初期化
+    /// - Parameter name: プレイリストの表示名（必須）
     init(name: String) {
         self.name = name
-        self.createdAt = Date()
-        self.updatedAt = Date()
-        self.videoCount = 0
+        self.createdAt = Date()    // 作成時刻を記録
+        self.updatedAt = Date()    // 初期更新時刻を設定
+        self.videoCount = 0        // 空のプレイリストとして初期化
     }
     
     /// プレイリストに動画を追加
