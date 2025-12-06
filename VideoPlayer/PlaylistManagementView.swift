@@ -8,26 +8,34 @@
 import SwiftData
 import SwiftUI
 
+/// プレイリスト管理画面のメインビュー
+/// 全てのプレイリストの一覧表示、新規作成、削除機能を提供
+/// SwiftData @Queryによるリアルタイム更新でデータの自動同期を実現
+/// NavigationStackによる階層ナビゲーションでプレイリスト詳細への遷移を管理
 struct PlaylistManagementView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var playlists: [Playlist]
+    @Environment(\.modelContext) private var modelContext  // SwiftDataのデータベースコンテキスト
+    @Query private var playlists: [Playlist]               // 全プレイリストの自動取得・監視
     
-    @State private var showingCreatePlaylist = false
-    @State private var newPlaylistName = ""
+    // UI状態管理プロパティ
+    @State private var showingCreatePlaylist = false       // 新規作成シートの表示状態
+    @State private var newPlaylistName = ""                // 新規プレイリスト名入力（未使用）
     
     var body: some View {
         NavigationStack {
             List {
+                // プレイリスト一覧：更新日時の降順でソート表示
                 ForEach(playlists.sorted(by: { $0.updatedAt > $1.updatedAt })) { playlist in
+                    // 各プレイリストをタップで詳細画面に遷移
                     NavigationLink(destination: PlaylistDetailView(playlist: playlist)) {
                         PlaylistRowView(playlist: playlist)
                     }
                 }
-                .onDelete(perform: deletePlaylists)
+                .onDelete(perform: deletePlaylists)  // スワイプ削除機能
             }
             .navigationTitle("Playlists")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                // 新規作成ボタン（右上の+アイコン）
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingCreatePlaylist = true
@@ -36,46 +44,60 @@ struct PlaylistManagementView: View {
                     }
                 }
             }
+            // 新規プレイリスト作成シート
             .sheet(isPresented: $showingCreatePlaylist) {
                 CreatePlaylistView()
             }
         }
     }
     
+    /// プレイリストのスワイプ削除処理
+    /// 指定されたインデックスのプレイリストをデータベースから完全削除
+    /// - Parameter offsets: 削除対象のプレイリストインデックス配列
     private func deletePlaylists(offsets: IndexSet) {
         let sortedPlaylists = playlists.sorted(by: { $0.updatedAt > $1.updatedAt })
         for index in offsets {
             modelContext.delete(sortedPlaylists[index])
         }
+        // データベースへの変更を即座に保存
         try? modelContext.save()
     }
 }
 
+/// プレイリスト一覧での個別行表示コンポーネント
+/// プレイリストの基本情報（名前、動画数、総再生時間、更新日時）をコンパクトに表示
+/// VStackによる縦方向レイアウトで情報の階層化を実現
+/// NavigationLinkとの組み合わせでプレイリスト詳細画面への遷移を提供
 struct PlaylistRowView: View {
-    let playlist: Playlist
+    let playlist: Playlist  // 表示対象のプレイリストオブジェクト
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // プレイリスト名（メインタイトル）
             Text(playlist.name)
                 .font(.headline)
             
+            // 動画数と総再生時間を水平に配置
             HStack {
+                // 含まれる動画の総数表示
                 Text("\(playlist.videoCount) videos")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 Spacer()
                 
+                // プレイリスト全体の再生時間（計算プロパティ使用）
                 Text(playlist.formattedTotalDuration)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             
+            // 最終更新日時の相対表示（例：「2時間前に更新」）
             Text("Updated: \(playlist.updatedAt, style: .relative)")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 2)  // 行間の適度な余白確保
     }
 }
 
