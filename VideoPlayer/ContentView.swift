@@ -10,29 +10,49 @@ import PhotosUI
 import SwiftData
 import SwiftUI
 
+/**
+ * メインの動画プレイヤー画面
+ * PhotosPickerを使用した動画選択、AVPlayerによる再生、SwiftDataによるメタデータ管理を統合
+ * プレイリスト管理、履歴表示、お気に入り機能など包括的な動画管理機能を提供
+ */
 struct ContentView: View {
+    // SwiftDataの操作コンテキスト - データベース操作に使用
     @Environment(\.modelContext) private var modelContext
+    
+    // データベースから全ての動画メタデータを取得するクエリ - リアルタイム更新対応
     @Query private var videoMetadata: [VideoMetadata]
+    
+    // データベースから全てのプレイリストを取得するクエリ - プレイリスト選択時に使用
     @Query private var playlists: [Playlist]
     
+    // PhotosPickerで選択された動画アイテム - 動画選択の起点となる重要な状態
     @State private var selectedItem: PhotosPickerItem?
+    
+    // AVPlayerインスタンス - 実際の動画再生を担当、nilの場合は未選択状態
     @State private var player: AVPlayer?
+    
+    // 動画の再生/一時停止状態 - UIのボタン表示と再生制御に使用
     @State private var isPlaying: Bool = false
-    @State private var showingVideoPicker = false
+    
+    // 現在再生中の動画のメタデータ - お気に入り機能や再生位置保存に使用
     @State private var currentVideoMetadata: VideoMetadata?
+    
+    // プレイリスト選択シートの表示状態 - AddToPlaylistViewの表示制御
     @State private var showingPlaylistView = false
+    
+    // 動画履歴画面の表示状態 - VideoHistoryViewのシート表示制御
     @State private var showingHistoryView = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                // Video Player
+                // 動画プレイヤー表示領域 - AVPlayerが設定されている場合のみ表示
                 if let player = player {
                     VideoPlayer(player: player)
                         .frame(width: 320, height: 180)
                         .cornerRadius(10)
                     
-                    // Video Info and Controls
+                    // 動画情報とコントロール部分 - メタデータが利用可能な場合のみ表示
                     if let metadata = currentVideoMetadata {
                         VStack(spacing: 10) {
                             Text(metadata.title)
@@ -40,7 +60,7 @@ struct ContentView: View {
                                 .lineLimit(2)
                             
                             HStack {
-                                // お気に入りボタン
+                                // お気に入りボタン - ハートアイコンで状態を視覚的に表現
                                 Button {
                                     toggleFavorite(metadata)
                                 } label: {
@@ -51,7 +71,7 @@ struct ContentView: View {
                                 
                                 Spacer()
                                 
-                                // プレイリストに追加ボタン
+                                // プレイリストに追加ボタン - AddToPlaylistViewシートを表示
                                 Button {
                                     showingPlaylistView = true
                                 } label: {
@@ -66,7 +86,7 @@ struct ContentView: View {
                         }
                     }
                     
-                    // Play/Pause Button
+                    // 再生/一時停止ボタン - 中央の円形ボタン
                     Button {
                         if isPlaying {
                             player.pause()
@@ -84,7 +104,7 @@ struct ContentView: View {
                             .clipShape(Circle())
                     }
                     
-                    // Reset Button
+                    // 最初から再生ボタン - 動画を冒頭に戻すボタン
                     Button("Reset to Beginning") {
                         player.seek(to: .zero)
                         if let metadata = currentVideoMetadata {
@@ -98,7 +118,7 @@ struct ContentView: View {
                     .padding()
                     
                 } else {
-                    // Placeholder when no video is selected
+                    // 動画未選択時のプレースホルダー表示 - グレーの矩形とメッセージ
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color.gray.opacity(0.3))
                         .frame(width: 320, height: 180)
@@ -108,7 +128,7 @@ struct ContentView: View {
                         )
                 }
                 
-                // Pick Video Button
+                // カメラロールから動画を選択するボタン - PhotosPickerを使用した動画選択の起点
                 PhotosPicker(
                     selection: $selectedItem,
                     matching: .videos
@@ -120,7 +140,7 @@ struct ContentView: View {
                         .cornerRadius(10)
                 }
                 
-                // Navigation Buttons
+                // ナビゲーションボタン群 - 他画面への移動ボタン
                 HStack(spacing: 20) {
                     Button("View History") {
                         showingHistoryView = true
@@ -166,25 +186,25 @@ struct ContentView: View {
         guard let item = item else { return }
         
         do {
-            // Get the movie file from the selected item
+            // 選択されたアイテムから動画ファイルを取得
             if let movie = try await item.loadTransferable(type: VideoTransferable.self) {
-                // Stop current player if playing
+                // 現在のプレイヤーが再生中の場合は停止
                 player?.pause()
                 isPlaying = false
                 
-                // Create new player with selected video
+                // 選択された動画で新しいプレイヤーを作成
                 player = AVPlayer(url: movie.url)
                 
-                // Get or create video metadata
+                // 動画メタデータを取得または作成
                 await createOrUpdateVideoMetadata(from: item, url: movie.url)
                 
-                // Restore playback position if available
+                // 利用可能な場合は再生位置を復元
                 if let metadata = currentVideoMetadata, metadata.playbackPosition > 0 {
                     let time = CMTime(seconds: metadata.playbackPosition, preferredTimescale: 600)
                     await player?.seek(to: time)
                 }
                 
-                // Optional: Add observer to know when video ends
+                // オプション: 動画終了時の通知を追加
                 NotificationCenter.default.addObserver(
                     forName: .AVPlayerItemDidPlayToEndTime,
                     object: player?.currentItem,
