@@ -305,5 +305,50 @@ struct VideoMetadataRowView: View {
 }
 
 #Preview {
-    PlaylistManagementView()
+    // SwiftUIプレビュー用のインメモリデータベース設定
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(
+        for: VideoMetadata.self, Playlist.self, configurations: config)
+    
+    // プレビュー用サンプルビデオ1：お気に入り設定済み、途中再生位置あり
+    let sampleVideo1 = VideoMetadata(
+        assetIdentifier: "sample1", title: "Sample Video 1", duration: 120)
+    sampleVideo1.lastPlayedAt = Date()
+    sampleVideo1.playbackPosition = 60  // 半分まで再生済み
+    sampleVideo1.isFavorite = true
+    
+    // プレビュー用サンプルビデオ2：1時間前に再生済み、通常動画
+    let sampleVideo2 = VideoMetadata(
+        assetIdentifier: "sample2", title: "Sample Video 2", duration: 180)
+    sampleVideo2.lastPlayedAt = Date().addingTimeInterval(-3600)  // 1時間前
+    
+    // プレビュー用サンプルビデオ3：お気に入り、再生済み
+    let sampleVideo3 = VideoMetadata(
+        assetIdentifier: "sample3", title: "Long Documentary Video", duration: 3600)
+    sampleVideo3.lastPlayedAt = Date().addingTimeInterval(-7200)  // 2時間前
+    sampleVideo3.isFavorite = true
+    sampleVideo3.playbackPosition = 1800  // 半分まで再生
+    
+    // プレビュー用サンプルプレイリスト1：複数の動画を含む
+    let playlist1 = Playlist(name: "Favorites Collection")
+    playlist1.addVideo(sampleVideo1)
+    playlist1.addVideo(sampleVideo3)
+    
+    // プレビュー用サンプルプレイリスト2：1つの動画のみ
+    let playlist2 = Playlist(name: "Watch Later")
+    playlist2.addVideo(sampleVideo2)
+    
+    // プレビュー用サンプルプレイリスト3：空のプレイリスト
+    let playlist3 = Playlist(name: "Empty Playlist")
+    
+    // サンプルデータをコンテナに追加
+    container.mainContext.insert(sampleVideo1)
+    container.mainContext.insert(sampleVideo2)
+    container.mainContext.insert(sampleVideo3)
+    container.mainContext.insert(playlist1)
+    container.mainContext.insert(playlist2)
+    container.mainContext.insert(playlist3)
+    
+    return PlaylistManagementView()
+        .modelContainer(container)
 }

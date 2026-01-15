@@ -282,7 +282,50 @@ struct ContentView: View {
     }
 }
 
+//#Preview {
+//    ContentView()
+//        .modelContainer(for: [VideoMetadata.self, Playlist.self], inMemory: true)
+//}
+
 #Preview {
-    ContentView()
-        .modelContainer(for: [VideoMetadata.self, Playlist.self])
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(
+        for: VideoMetadata.self, Playlist.self, configurations: config)
+    
+    // 動画サンプル（5つ）
+    let videos = [
+        ("sample1", "Introduction to Swift", 300, true, 150),
+        ("sample2", "Advanced SwiftUI", 600, false, 0),
+        ("sample3", "SwiftData Tutorial", 450, true, 200),
+        ("sample4", "iOS App Design", 900, false, 450),
+        ("sample5", "Publishing to App Store", 720, true, 0)
+    ].map { (id, title, duration, isFavorite, position) in
+        let video = VideoMetadata(assetIdentifier: id, title: title, duration: Double(duration))
+        video.isFavorite = isFavorite
+        video.playbackPosition = Double(position)
+        video.lastPlayedAt = Date().addingTimeInterval(Double.random(in: -86400...0))
+        return video
+    }
+    
+    // プレイリストサンプル（4つ）
+    let playlist1 = Playlist(name: "Swift Learning Path")
+    playlist1.addVideo(videos[0])
+    playlist1.addVideo(videos[1])
+    playlist1.addVideo(videos[2])
+    
+    let playlist2 = Playlist(name: "Design Resources")
+    playlist2.addVideo(videos[3])
+    
+    let playlist3 = Playlist(name: "Publishing Guide")
+    playlist3.addVideo(videos[4])
+    
+    let playlist4 = Playlist(name: "To Watch")
+    // 空のプレイリスト
+    
+    // すべてをコンテナに追加
+    videos.forEach { container.mainContext.insert($0) }
+    [playlist1, playlist2, playlist3, playlist4].forEach { container.mainContext.insert($0) }
+    
+    return ContentView()
+        .modelContainer(container)
 }
