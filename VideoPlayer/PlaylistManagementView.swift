@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import AVKit
 
 /// プレイリスト管理画面のメインビュー
 /// 全てのプレイリストの一覧表示、新規作成、削除機能を提供
@@ -174,8 +175,11 @@ struct PlaylistDetailView: View {
                         > ($1.lastPlayedAt ?? Date.distantPast)
                     })
                 ) { video in
-                    VideoMetadataRowView(video: video) {
-                        removeVideo(video)  // 動画削除のクロージャ
+                    // タップで再生画面へ遷移（行内のRemoveボタンはそのまま使用可能）
+                    NavigationLink(destination: VideoPlayerDetailView(video: video)) {
+                        VideoMetadataRowView(video: video) {
+                            removeVideo(video)  // 動画削除のクロージャ
+                        }
                     }
                 }
                 .onDelete(perform: deleteVideos)  // スワイプ削除機能
@@ -290,17 +294,85 @@ struct VideoMetadataRowView: View {
                     }
                 }
             }
-            
-            Spacer()
-            
-            // 削除ボタン（右側）
-            Button("Remove") {
-                onRemove()
-            }
-            .font(.caption)
-            .foregroundColor(.red)  // 削除操作なので警告色で表示
         }
         .padding(.vertical, 2)
+    }
+}
+
+/// 動画詳細再生画面
+/// シンプル実装: `VideoMetadata.filePath` からローカルURLを作成し `AVPlayer` で再生します
+struct VideoPlayerDetailView: View {
+    let video: VideoMetadata
+    
+    @State private var player: AVPlayer? = nil
+    @State private var isPlaying = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            if let player = player {
+                VideoPlayer(player: player)
+                    .frame(height: 240)
+                    .cornerRadius(8)
+                    .onAppear {
+                        player.play()
+                        isPlaying = true
+                    }
+                    .onDisappear {
+                        player.pause()
+                        isPlaying = false
+                    }
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 240)
+                    .overlay(Text("Video file not available").foregroundColor(.secondary))
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text(video.title)
+                    .font(.headline)
+                HStack {
+                    Text(video.formattedDuration)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    if video.playbackPosition > 0 {
+                        Text("Progress: \(video.formattedPosition)")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                }
+                HStack {
+                    Button(action: togglePlay) {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.title2)
+                            .padding(8)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .clipShape(Circle())
+                    }
+                    Spacer()
+                }
+            }
+            .padding(.horizontal)
+            
+            Spacer()
+        }
+        .padding()
+        .navigationTitle(video.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if let path = video.filePath {
+                let url = URL(fileURLWithPath: path)
+                player = AVPlayer(url: url)
+            }
+        }
+    }
+    
+    private func togglePlay() {
+        guard let player = player else { return }
+        if isPlaying { player.pause() } else { player.play() }
+        isPlaying.toggle()
     }
 }
 
