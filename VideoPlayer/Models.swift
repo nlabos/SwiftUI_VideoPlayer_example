@@ -17,6 +17,10 @@ class VideoMetadata {
     /// ファイル名またはPhotosライブラリのlocalIdentifierを使用
     @Attribute(.unique) var assetIdentifier: String
     
+    /// 動画ファイルのローカルパスを保持（オプショナル）
+    /// AVPlayerで再生する際にURL(fileURLWithPath:)で使用する
+    var filePath: String?    // 新規追加: 保存されたファイルのフルパス
+    
     /// ユーザーが設定可能な動画タイトル
     /// 初期値はファイル名から自動生成、後から編集可能
     var title: String
@@ -56,8 +60,10 @@ class VideoMetadata {
     ///   - assetIdentifier: 一意識別子（必須）
     ///   - title: 動画タイトル（必須）
     ///   - duration: 動画の長さ（デフォルト0、後から更新可能）
-    init(assetIdentifier: String, title: String, duration: TimeInterval = 0) {
+    ///   - filePath: 動画ファイルのフルパス（オプショナル）
+    init(assetIdentifier: String, title: String, duration: TimeInterval = 0, filePath: String? = nil) {
         self.assetIdentifier = assetIdentifier
+        self.filePath = filePath
         self.title = title
         self.isFavorite = false        // デフォルトは非お気に入り
         self.lastPlayedAt = nil        // 未再生状態

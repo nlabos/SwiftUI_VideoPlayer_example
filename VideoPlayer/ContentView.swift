@@ -236,6 +236,10 @@ struct ContentView: View {
         // 既存のメタデータを検索
         if let existing = videoMetadata.first(where: { $0.assetIdentifier == identifier }) {
             existing.lastPlayedAt = Date()  // 最終再生日時を現在時刻で更新
+            // ファイルパスが保存されていない場合は設定
+            if existing.filePath == nil {
+                existing.filePath = url.path
+            }
             currentVideoMetadata = existing
         } else {
             // 新しいメタデータを作成
@@ -246,7 +250,8 @@ struct ContentView: View {
             let metadata = VideoMetadata(
                 assetIdentifier: identifier,
                 title: url.deletingPathExtension().lastPathComponent,  // ファイル名から拡張子を除いたものをタイトルに設定
-                duration: durationSeconds
+                duration: durationSeconds,
+                filePath: url.path
             )
             metadata.lastPlayedAt = Date()
             
