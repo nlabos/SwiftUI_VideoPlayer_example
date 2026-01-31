@@ -237,8 +237,16 @@ struct ContentView: View {
         if let existing = videoMetadata.first(where: { $0.assetIdentifier == identifier }) {
             existing.lastPlayedAt = Date()  // 最終再生日時を現在時刻で更新
             // ファイルパスが保存されていない場合は設定
-            if existing.filePath == nil {
-                existing.filePath = url.path
+            //if existing.filePath == nil {
+            //    existing.filePath = url.path
+            //}
+            // ファイルが実際に存在する場合のみパスを更新
+            if FileManager.default.fileExists(atPath: url.path) {
+                existing.filePath = url.path // 常に最新のパスを保持
+            } else {
+                // ファイルが存在しない場合は再コピーが必要
+                print("⚠️ ファイルが見つかりません: \(url.path)")
+                existing.filePath = nil  // 無効なパスをクリア
             }
             currentVideoMetadata = existing
         } else {
