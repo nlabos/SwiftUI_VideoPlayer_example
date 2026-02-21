@@ -7,7 +7,6 @@
 
 import SwiftData
 import SwiftUI
-import AVKit
 
 /// プレイリスト管理画面のメインビュー
 /// 全てのプレイリストの一覧表示、新規作成、削除機能を提供

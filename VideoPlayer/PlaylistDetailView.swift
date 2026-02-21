@@ -7,7 +7,6 @@
 
 import SwiftData
 import SwiftUI
-import AVKit
 /// プレイリスト詳細画面
 /// 指定されたプレイリストに含まれる動画の一覧表示、動画の削除、プレイリスト名の編集機能を提供
 struct PlaylistDetailView: View {
